@@ -230,5 +230,4 @@ const EUROPE = {
         },
     ],
 };
-export default EUROPE;
 //# sourceMappingURL=EUROPE.js.map
