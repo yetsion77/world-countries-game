@@ -152,6 +152,16 @@ function setupEventListeners() {
     startMapGame("europe");
   });
 
+  // Start Map Game Button - Asia
+  document.getElementById("btn-start-map-asia").addEventListener("click", () => {
+    startMapGame("asia");
+  });
+
+  // Start Map Game Button - Africa
+  document.getElementById("btn-start-map-africa").addEventListener("click", () => {
+    startMapGame("africa");
+  });
+
   // Start Map Game Button - Americas
   document.getElementById("btn-start-map-americas").addEventListener("click", () => {
     startMapGame("americas");
@@ -1025,7 +1035,7 @@ function formatPopulation(num) {
 }
 
 // =========================================================================
-// INTERACTIVE MAP GAME ENGINE (EUROPE & AMERICAS)
+// INTERACTIVE MAP GAME ENGINE (EUROPE, ASIA, AFRICA, AMERICAS)
 // =========================================================================
 
 const AMERICAS_CODES = [
@@ -1034,9 +1044,23 @@ const AMERICAS_CODES = [
   'pe', 'br', 'bo', 'py', 'uy', 'ar', 'cl'
 ];
 
+const AFRICA_CODES = [
+  'eg', 'za', 'ma', 'ng', 'et', 'ke', 'gh', 'dz', 'tn', 'ly', 
+  'sd', 'ao', 'tz', 'ug', 'cm', 'mg', 'zw', 'zm', 'na', 'bw', 
+  'sn', 'ci', 'mz'
+];
+
+const ASIA_CODES = [
+  'cn', 'jp', 'in', 'kr', 'ru', 'tr', 'sa', 'il', 'vn', 'th', 
+  'id', 'ph', 'sg', 'pk', 'bd', 'lk', 'np', 'my', 'ir', 'iq', 
+  'jo', 'lb', 'om', 'qa', 'kw', 'bh', 'kz', 'uz', 'az', 'ge', 
+  'am', 'mn', 'mm', 'kh', 'la', 'bn', 'kg', 'tj', 'tm', 'bt', 
+  'mv', 'ye', 'sy'
+];
+
 function startMapGame(mapType) {
   gameState.gameMode = "map";
-  gameState.currentMap = mapType; // "europe" or "americas"
+  gameState.currentMap = mapType; // "europe", "asia", "africa", or "americas"
   gameState.score = 0;
   gameState.currentQuestionIndex = 0;
   gameState.roundHistory = [];
@@ -1045,16 +1069,22 @@ function startMapGame(mapType) {
 
   if (mapType === "europe") {
     document.getElementById("map-badge-text").textContent = "מפת אירופה";
-    
-    // Filter countries database to find those in EUROPE.states
     const europeanCountryCodes = EUROPE.states.map(state => state.code.replace("XE-", "").toLowerCase());
     targetCountries = COUNTRIES_DATA.filter(country => 
       europeanCountryCodes.includes(country.code.toLowerCase())
     );
+  } else if (mapType === "asia") {
+    document.getElementById("map-badge-text").textContent = "מפת אסיה";
+    targetCountries = COUNTRIES_DATA.filter(country => 
+      ASIA_CODES.includes(country.code.toLowerCase())
+    );
+  } else if (mapType === "africa") {
+    document.getElementById("map-badge-text").textContent = "מפת אפריקה";
+    targetCountries = COUNTRIES_DATA.filter(country => 
+      AFRICA_CODES.includes(country.code.toLowerCase())
+    );
   } else {
     document.getElementById("map-badge-text").textContent = "מפת אמריקה";
-    
-    // Filter countries database to find those in AMERICAS_CODES
     targetCountries = COUNTRIES_DATA.filter(country => 
       AMERICAS_CODES.includes(country.code.toLowerCase())
     );
@@ -1100,10 +1130,20 @@ function renderMap() {
       path: state.path
     }));
   } else {
-    // Custom cropped bounding box for the Americas in World map coordinate space
-    viewBox = "-38.5 -37.6 954.8 913.6";
+    let activeCodes = [];
+    if (gameState.currentMap === "americas") {
+      viewBox = "-38.5 -37.6 954.8 913.6";
+      activeCodes = AMERICAS_CODES;
+    } else if (gameState.currentMap === "africa") {
+      viewBox = "-42.6 -45.5 1330.5 739";
+      activeCodes = AFRICA_CODES;
+    } else { // "asia"
+      viewBox = "-36.8 -43.4 1842.3 631.7";
+      activeCodes = ASIA_CODES;
+    }
+
     mapData = World.countries
-      .filter(c => AMERICAS_CODES.includes(c.code.toLowerCase()))
+      .filter(c => activeCodes.includes(c.code.toLowerCase()))
       .map(c => {
         const d = c.path ? c.path : (c.paths ? c.paths.map(p => p.d).join(" ") : "");
         return {
