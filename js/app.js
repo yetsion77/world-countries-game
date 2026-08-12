@@ -8,7 +8,18 @@ let gameState = {
   timeLeft: 15, // seconds per question
   maxTime: 15,
   isAnswered: false,
-  roundHistory: [] // To store details of the current 10 questions
+  roundHistory: [], // To store details of the current 10 questions
+  gameMode: "trivia" // "trivia" or "map"
+};
+
+// Interactive Map Zoom/Drag State
+let mapZoom = {
+  scale: 1,
+  translateX: 0,
+  translateY: 0,
+  isDragging: false,
+  startX: 0,
+  startY: 0
 };
 
 // User Stats Management
@@ -125,11 +136,38 @@ function setupEventListeners() {
   });
 
   document.getElementById("btn-replay-trivia").addEventListener("click", () => {
-    startTriviaGame();
+    if (gameState.gameMode === "map") {
+      startMapGame();
+    } else {
+      startTriviaGame();
+    }
   });
 
   document.getElementById("btn-results-home").addEventListener("click", () => {
     switchView("dashboard-view");
+  });
+
+  // Start Map Game Button
+  document.getElementById("btn-start-map").addEventListener("click", () => {
+    startMapGame();
+  });
+
+  // Abort Map Game Button
+  document.getElementById("btn-abort-map").addEventListener("click", () => {
+    if (confirm("האם אתה בטוח שברצונך לעזוב את משחק המפה באמצע? ההתקדמות בסבב זה תימחק.")) {
+      switchView("dashboard-view");
+    }
+  });
+
+  // Map Zoom controls
+  document.getElementById("btn-zoom-in").addEventListener("click", () => {
+    adjustMapZoom(0.2);
+  });
+  document.getElementById("btn-zoom-out").addEventListener("click", () => {
+    adjustMapZoom(-0.2);
+  });
+  document.getElementById("btn-zoom-reset").addEventListener("click", () => {
+    resetMapZoom();
   });
 
   // Study View Navigation
@@ -168,14 +206,20 @@ function setupEventListeners() {
   document.getElementById("study-sort").addEventListener("change", filterAndRenderCards);
 }
 
-// Confirmation helper when leaving trivia
+// Confirmation helper when leaving active games
 function confirmToQuitTrivia() {
   const triviaView = document.getElementById("trivia-view");
+  const mapView = document.getElementById("map-view");
   if (triviaView.classList.contains("active")) {
     if (!confirm("האם לצאת מהמשחק הפעיל?")) {
       return false;
     }
     stopTimer();
+  }
+  if (mapView.classList.contains("active")) {
+    if (!confirm("האם לצאת ממשחק המפה הפעיל?")) {
+      return false;
+    }
   }
   return true;
 }
@@ -209,6 +253,7 @@ function showFact() {
 // =========================================================================
 
 function startTriviaGame() {
+  gameState.gameMode = "trivia";
   // Get filtered countries based on level selection
   let availableCountries = [];
   if (gameState.currentLevel === "all") {
@@ -640,14 +685,16 @@ function showResults() {
   const subtitleEl = document.getElementById("results-subtitle");
   const emojiEl = document.getElementById("results-emoji");
   
+  const modeName = gameState.gameMode === "map" ? "משחק המפה" : "סבב הטריוויה";
+  
   if (gameState.score === 10) {
     titleEl.textContent = "מושלם! אלוף עולם! 👑";
-    subtitleEl.textContent = "ענית נכון על כל השאלות בסבב!";
+    subtitleEl.textContent = `ענית נכון על כל השאלות ב${modeName}!`;
     emojiEl.textContent = "👑";
     triggerConfetti(true);
   } else if (gameState.score >= 8) {
     titleEl.textContent = "כל הכבוד! הישג מצוין! 🌟";
-    subtitleEl.textContent = "יש לך ידע מעולה במדינות העולם.";
+    subtitleEl.textContent = `יש לך ידע מעולה ב${gameState.gameMode === "map" ? "זיהוי מדינות במפה" : "טריוויית מדינות"}.`;
     emojiEl.textContent = "🌟";
     triggerConfetti(false);
   } else if (gameState.score >= 5) {
@@ -969,4 +1016,245 @@ function formatPopulation(num) {
     return `${(num / 1000000).toFixed(1)} מיליון`;
   }
   return formatNumber(num);
+}
+
+// =========================================================================
+// INTERACTIVE MAP GAME ENGINE (EUROPE)
+// =========================================================================
+
+function startMapGame() {
+  gameState.gameMode = "map";
+  gameState.score = 0;
+  gameState.currentQuestionIndex = 0;
+  gameState.roundHistory = [];
+
+  // Filter countries database to find those in EUROPE.states
+  const europeanCountryCodes = EUROPE.states.map(state => state.code.replace("XE-", "").toLowerCase());
+  const europeanCountries = COUNTRIES_DATA.filter(country => 
+    europeanCountryCodes.includes(country.code.toLowerCase())
+  );
+
+  if (europeanCountries.length === 0) {
+    alert("שגיאה: לא נמצאו מדינות אירופאיות בבסיס הנתונים!");
+    return;
+  }
+
+  // Shuffle and take 10
+  shuffleArray(europeanCountries);
+  gameState.allQuestions = europeanCountries.slice(0, 10).map(c => ({
+    text: `איפה נמצאת ${c.name}?`,
+    target: c
+  }));
+
+  // Switch to map view
+  switchView("map-view");
+  
+  // Render map
+  renderEuropeMap();
+  
+  // Reset zoom
+  resetMapZoom();
+  
+  // Show first question
+  showMapQuestion();
+}
+
+function renderEuropeMap() {
+  const container = document.getElementById("map-svg-container");
+  container.innerHTML = ""; // Clear existing
+
+  // Create SVG element
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", EUROPE.viewBox);
+  svg.setAttribute("width", "100%");
+  svg.setAttribute("height", "100%");
+  svg.style.transition = "transform 0.1s ease-out";
+
+  // Create group for zoom/pan
+  const svgGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  svgGroup.id = "map-zoom-group";
+  svgGroup.style.transform = `translate(${mapZoom.translateX}px, ${mapZoom.translateY}px) scale(${mapZoom.scale})`;
+  svgGroup.style.transformOrigin = "center center";
+
+  // Append paths
+  EUROPE.states.forEach(state => {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", state.path);
+    
+    const isoCode = state.code.replace("XE-", "").toLowerCase();
+    path.setAttribute("id", `map-country-${isoCode}`);
+    path.setAttribute("class", "map-country-path");
+    
+    // Add simple SVG title/tooltip
+    const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+    title.textContent = state.name;
+    path.appendChild(title);
+
+    // Event listener
+    path.addEventListener("click", (e) => {
+      // Prevent click while dragging is happening
+      if (mapZoom.isDragging) return;
+      handleMapCountryClick(isoCode, path);
+    });
+
+    svgGroup.appendChild(path);
+  });
+
+  svg.appendChild(svgGroup);
+  container.appendChild(svg);
+
+  // Setup pan/drag listeners
+  setupMapDragListeners(container, svgGroup);
+}
+
+function showMapQuestion() {
+  gameState.isAnswered = false;
+  
+  // Reset all highlighted paths from previous question (correct/incorrect classes)
+  const paths = document.querySelectorAll(".map-country-path");
+  paths.forEach(p => {
+    p.classList.remove("correct", "incorrect", "highlighted");
+  });
+
+  const question = gameState.allQuestions[gameState.currentQuestionIndex];
+  
+  // Set progress header
+  document.getElementById("map-progress-text").textContent = `מדינה ${gameState.currentQuestionIndex + 1} מתוך 10`;
+  document.getElementById("map-current-score").textContent = gameState.score;
+  
+  // Set question text
+  document.getElementById("map-question-text").innerHTML = `לחצו במפה על: <strong style="color: var(--color-warning); font-size: 1.5rem;">${question.target.name}</strong>`;
+}
+
+function handleMapCountryClick(clickedCode, pathElement) {
+  if (gameState.isAnswered) return;
+  gameState.isAnswered = true;
+  
+  const question = gameState.allQuestions[gameState.currentQuestionIndex];
+  const targetCountry = question.target;
+  const isCorrect = clickedCode.toLowerCase() === targetCountry.code.toLowerCase();
+  
+  if (isCorrect) {
+    gameState.score++;
+    pathElement.classList.add("correct");
+  } else {
+    pathElement.classList.add("incorrect");
+    
+    // Highlight correct country in gold
+    const correctPath = document.getElementById(`map-country-${targetCountry.code.toLowerCase()}`);
+    if (correctPath) {
+      correctPath.classList.add("highlighted");
+    }
+  }
+
+  // Get clicked country name if available in our database, otherwise use the SVG state name
+  const clickedCountryData = COUNTRIES_DATA.find(c => c.code.toLowerCase() === clickedCode.toLowerCase());
+  const svgState = EUROPE.states.find(s => s.code.replace("XE-", "").toLowerCase() === clickedCode.toLowerCase());
+  const clickedCountryName = clickedCountryData ? clickedCountryData.name : (svgState ? svgState.name : "מדינה לא ידועה");
+
+  // Save progress details
+  gameState.roundHistory.push({
+    questionText: `זיהוי ${targetCountry.name} במפה`,
+    correctAnswer: targetCountry.name,
+    userAnswer: isCorrect ? targetCountry.name : `לחיצה על ${clickedCountryName}`,
+    isCorrect: isCorrect
+  });
+
+  // Update stats
+  userStats.totalQuestionsAnswered++;
+  if (isCorrect) userStats.correctAnswers++;
+  saveStats();
+
+  // Progress to next question
+  setTimeout(nextMapQuestion, 2500);
+}
+
+function nextMapQuestion() {
+  gameState.currentQuestionIndex++;
+  
+  if (gameState.currentQuestionIndex < 10) {
+    showMapQuestion();
+  } else {
+    showResults();
+  }
+}
+
+// Map Zoom and Drag Actions
+function adjustMapZoom(delta) {
+  const svgGroup = document.getElementById("map-zoom-group");
+  if (!svgGroup) return;
+  
+  mapZoom.scale = Math.max(1, Math.min(4, mapZoom.scale + delta));
+  
+  // If scale resets to 1, reset translations too
+  if (mapZoom.scale === 1) {
+    mapZoom.translateX = 0;
+    mapZoom.translateY = 0;
+  }
+  
+  applyMapTransform(svgGroup);
+}
+
+function resetMapZoom() {
+  const svgGroup = document.getElementById("map-zoom-group");
+  if (!svgGroup) return;
+  
+  mapZoom.scale = 1;
+  mapZoom.translateX = 0;
+  mapZoom.translateY = 0;
+  
+  applyMapTransform(svgGroup);
+}
+
+function setupMapDragListeners(container, svgGroup) {
+  container.addEventListener("mousedown", dragStart);
+  container.addEventListener("mousemove", drag);
+  window.addEventListener("mouseup", dragEnd);
+
+  container.addEventListener("touchstart", dragStart, { passive: false });
+  container.addEventListener("touchmove", drag, { passive: false });
+  window.addEventListener("touchend", dragEnd);
+
+  let startClientX = 0;
+  let startClientY = 0;
+
+  function dragStart(e) {
+    if (e.target.classList.contains("map-ctrl-btn")) return;
+    mapZoom.isDragging = true;
+    
+    // Get client coordinates
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    
+    startClientX = clientX;
+    startClientY = clientY;
+    
+    mapZoom.startX = clientX - mapZoom.translateX;
+    mapZoom.startY = clientY - mapZoom.translateY;
+  }
+
+  function drag(e) {
+    if (!mapZoom.isDragging) return;
+    
+    // Only prevent default on touch drag (to prevent scrolling)
+    if (e.touches) {
+      e.preventDefault();
+    }
+    
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    
+    mapZoom.translateX = clientX - mapZoom.startX;
+    mapZoom.translateY = clientY - mapZoom.startY;
+    
+    applyMapTransform(svgGroup);
+  }
+
+  function dragEnd() {
+    mapZoom.isDragging = false;
+  }
+}
+
+function applyMapTransform(svgGroup) {
+  svgGroup.style.transform = `translate(${mapZoom.translateX}px, ${mapZoom.translateY}px) scale(${mapZoom.scale})`;
 }

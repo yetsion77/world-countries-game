@@ -1172,3 +1172,133 @@ h1, h2, h3, h4 {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* === סגנונות חדשים למשחק המפה וכפתור האזהרה === */
+
+.btn-warning {
+  background: linear-gradient(135deg, var(--color-warning) 0%, #b45309 100%);
+  color: var(--text-dark);
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+}
+
+.btn-warning:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.5);
+}
+
+.btn-warning:active {
+  transform: translateY(1px);
+}
+
+/* מיכל המפה האינטראקטיבית */
+.map-wrapper {
+  position: relative;
+  width: 100%;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(10, 11, 16, 0.7);
+  border-radius: var(--border-radius-md);
+  padding: 15px;
+  overflow: hidden;
+  touch-action: none; /* מבטל גלילת דפדפן בזמן גרירה בנייד */
+}
+
+.map-controls {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 20;
+  background: rgba(22, 25, 45, 0.85);
+  border: 1px solid var(--glass-border);
+  padding: 6px 12px;
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+.map-ctrl-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all var(--transition-fast);
+}
+
+.map-ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.map-ctrl-instruction {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-right: 8px;
+}
+
+.map-svg-container {
+  width: 100%;
+  height: 520px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: grab;
+  overflow: hidden;
+  position: relative;
+}
+
+.map-svg-container:active {
+  cursor: grabbing;
+}
+
+.map-svg-container svg {
+  max-width: 100%;
+  max-height: 100%;
+  transition: transform 0.05s ease-out;
+}
+
+/* סגנון מדינות בתוך ה-SVG */
+.map-country-path {
+  fill: rgba(255, 255, 255, 0.06);
+  stroke: rgba(255, 255, 255, 0.18);
+  stroke-width: 1.2px;
+  stroke-linejoin: round;
+  transition: fill 0.25s ease, stroke 0.25s ease, filter 0.25s ease;
+  cursor: pointer;
+}
+
+.map-country-path:hover {
+  fill: rgba(59, 130, 246, 0.25);
+  stroke: var(--color-primary);
+  filter: drop-shadow(0 0 4px var(--color-primary));
+}
+
+/* סגנונות מצבי משחק מפה (נכון, שגוי והדגשה) */
+.map-country-path.correct {
+  fill: rgba(16, 185, 129, 0.45) !important;
+  stroke: var(--color-success) !important;
+  filter: drop-shadow(0 0 10px var(--color-success)) !important;
+}
+
+.map-country-path.incorrect {
+  fill: rgba(239, 68, 68, 0.45) !important;
+  stroke: var(--color-error) !important;
+  filter: drop-shadow(0 0 10px var(--color-error)) !important;
+}
+
+.map-country-path.highlighted {
+  fill: rgba(245, 158, 11, 0.45) !important;
+  stroke: var(--color-warning) !important;
+  filter: drop-shadow(0 0 10px var(--color-warning)) !important;
+}
+
