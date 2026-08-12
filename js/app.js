@@ -1150,11 +1150,6 @@ function handleMapCountryClick(clickedCode, pathElement) {
     }
   }
 
-  // Get clicked country name if available in our database, otherwise use the SVG state name
-  const clickedCountryData = COUNTRIES_DATA.find(c => c.code.toLowerCase() === clickedCode.toLowerCase());
-  const svgState = EUROPE.states.find(s => s.code.replace("XE-", "").toLowerCase() === clickedCode.toLowerCase());
-  const clickedCountryName = clickedCountryData ? clickedCountryData.name : (svgState ? svgState.name : "מדינה לא ידועה");
-
   // Save progress details
   gameState.roundHistory.push({
     questionText: `זיהוי ${targetCountry.name} במפה`,
