@@ -668,7 +668,8 @@ function showResults() {
   
   userStats.gamesPlayed++;
   
-  const finalScorePct = Math.round((gameState.score / 10) * 100);
+  const totalQ = gameState.allQuestions.length;
+  const finalScorePct = Math.round((gameState.score / totalQ) * 100);
   
   // Beat high score?
   if (gameState.score > userStats.highScore) {
@@ -678,7 +679,7 @@ function showResults() {
   
   // Render results values
   document.getElementById("results-score-pct").textContent = `${finalScorePct}%`;
-  document.getElementById("results-score-fraction").textContent = `${gameState.score}/10`;
+  document.getElementById("results-score-fraction").textContent = `${gameState.score}/${totalQ}`;
   
   // Customize title & emoji
   const titleEl = document.getElementById("results-title");
@@ -687,17 +688,17 @@ function showResults() {
   
   const modeName = gameState.gameMode === "map" ? "משחק המפה" : "סבב הטריוויה";
   
-  if (gameState.score === 10) {
+  if (gameState.score === totalQ) {
     titleEl.textContent = "מושלם! אלוף עולם! 👑";
     subtitleEl.textContent = `ענית נכון על כל השאלות ב${modeName}!`;
     emojiEl.textContent = "👑";
     triggerConfetti(true);
-  } else if (gameState.score >= 8) {
+  } else if (finalScorePct >= 80) {
     titleEl.textContent = "כל הכבוד! הישג מצוין! 🌟";
     subtitleEl.textContent = `יש לך ידע מעולה ב${gameState.gameMode === "map" ? "זיהוי מדינות במפה" : "טריוויית מדינות"}.`;
     emojiEl.textContent = "🌟";
     triggerConfetti(false);
-  } else if (gameState.score >= 5) {
+  } else if (finalScorePct >= 50) {
     titleEl.textContent = "עבודה טובה! 👍";
     subtitleEl.textContent = "תוצאה נחמדה, תמיד אפשר להשתפר.";
     emojiEl.textContent = "👍";
@@ -1039,9 +1040,9 @@ function startMapGame() {
     return;
   }
 
-  // Shuffle and take 10
+  // Shuffle all European countries
   shuffleArray(europeanCountries);
-  gameState.allQuestions = europeanCountries.slice(0, 10).map(c => ({
+  gameState.allQuestions = europeanCountries.map(c => ({
     text: `איפה נמצאת ${c.name}?`,
     target: c
   }));
@@ -1109,17 +1110,11 @@ function renderEuropeMap() {
 
 function showMapQuestion() {
   gameState.isAnswered = false;
-  
-  // Reset all highlighted paths from previous question (correct/incorrect classes)
-  const paths = document.querySelectorAll(".map-country-path");
-  paths.forEach(p => {
-    p.classList.remove("correct", "incorrect", "highlighted");
-  });
 
   const question = gameState.allQuestions[gameState.currentQuestionIndex];
   
   // Set progress header
-  document.getElementById("map-progress-text").textContent = `מדינה ${gameState.currentQuestionIndex + 1} מתוך 10`;
+  document.getElementById("map-progress-text").textContent = `מדינה ${gameState.currentQuestionIndex + 1} מתוך ${gameState.allQuestions.length}`;
   document.getElementById("map-current-score").textContent = gameState.score;
   
   // Set question text
@@ -1134,16 +1129,24 @@ function handleMapCountryClick(clickedCode, pathElement) {
   const targetCountry = question.target;
   const isCorrect = clickedCode.toLowerCase() === targetCountry.code.toLowerCase();
   
+  // Get clicked country name if available in our database, otherwise use the SVG state name
+  const clickedCountryData = COUNTRIES_DATA.find(c => c.code.toLowerCase() === clickedCode.toLowerCase());
+  const svgState = EUROPE.states.find(s => s.code.replace("XE-", "").toLowerCase() === clickedCode.toLowerCase());
+  const clickedCountryName = clickedCountryData ? clickedCountryData.name : (svgState ? svgState.name : "מדינה לא ידועה");
+
   if (isCorrect) {
     gameState.score++;
     pathElement.classList.add("correct");
+    addMapFlag(pathElement, targetCountry.code);
   } else {
     pathElement.classList.add("incorrect");
+    addMapFlag(pathElement, clickedCode);
     
     // Highlight correct country in gold
     const correctPath = document.getElementById(`map-country-${targetCountry.code.toLowerCase()}`);
     if (correctPath) {
       correctPath.classList.add("highlighted");
+      addMapFlag(correctPath, targetCountry.code);
     }
   }
 
@@ -1172,7 +1175,7 @@ function handleMapCountryClick(clickedCode, pathElement) {
 function nextMapQuestion() {
   gameState.currentQuestionIndex++;
   
-  if (gameState.currentQuestionIndex < 10) {
+  if (gameState.currentQuestionIndex < gameState.allQuestions.length) {
     showMapQuestion();
   } else {
     showResults();
@@ -1257,4 +1260,27 @@ function setupMapDragListeners(container, svgGroup) {
 
 function applyMapTransform(svgGroup) {
   svgGroup.style.transform = `translate(${mapZoom.translateX}px, ${mapZoom.translateY}px) scale(${mapZoom.scale})`;
+}
+
+// Helper: Add small flag image inside the SVG path bounding box
+function addMapFlag(pathElement, countryCode) {
+  // Check if flag already exists to avoid duplicates
+  const existingFlag = pathElement.parentNode.querySelector(`image[data-country-id="${pathElement.id}"]`);
+  if (existingFlag) return;
+
+  const bbox = pathElement.getBBox();
+  const flagWidth = 24;
+  const flagHeight = 16;
+  
+  const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
+  image.setAttribute("href", `https://flagcdn.com/w80/${countryCode.toLowerCase()}.png`);
+  image.setAttribute("x", bbox.x + bbox.width / 2 - flagWidth / 2);
+  image.setAttribute("y", bbox.y + bbox.height / 2 - flagHeight / 2);
+  image.setAttribute("width", flagWidth);
+  image.setAttribute("height", flagHeight);
+  image.setAttribute("class", "map-country-flag");
+  image.setAttribute("data-country-id", pathElement.id);
+  image.setAttribute("pointer-events", "none");
+  
+  pathElement.parentNode.appendChild(image);
 }
