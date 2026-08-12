@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>אלופי הגיאוגרפיה - משחק מדינות העולם</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&family=Secular+One&display=swap" rel="stylesheet">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Canvas Confetti for winning animation -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+
+  <!-- Background decorations (glowing circles for modern glassmorphism UI) -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-glow bg-glow-3"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo" id="header-logo">
+        <span class="logo-icon">🌍</span>
+        <h1 class="logo-text">אלופי הגיאוגרפיה</h1>
+      </div>
+      <div class="header-stats">
+        <div class="stat-pill">
+          <span class="stat-label">שיא טריוויה:</span>
+          <span class="stat-val" id="high-score-val">0</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- VIEW 1: DASHBOARD (HOME SCREEN) -->
+      <section id="dashboard-view" class="view-section active">
+        <div class="hero-section">
+          <h2>בחנו את הידע שלכם על מדינות העולם!</h2>
+          <p>גלו דגלים, ערי בירה, שטחים, אוכלוסייה, מטבעות ושפות ב-3 דרגות קושי שונות.</p>
+        </div>
+
+        <div class="dashboard-grid">
+          <!-- Setup Panel -->
+          <div class="panel glass-panel setup-panel">
+            <h3>הגדרות המשחק</h3>
+            
+            <!-- Difficulty Selection -->
+            <div class="control-group">
+              <label class="group-title">בחר רמת קושי:</label>
+              <div class="difficulty-options">
+                <button class="diff-btn active" data-level="1">
+                  <span class="diff-title">רמה 1 - בסיסית</span>
+                  <span class="diff-desc">50 המדינות המוכרות ביותר</span>
+                </button>
+                <button class="diff-btn" data-level="2">
+                  <span class="diff-title">רמה 2 - בינונית</span>
+                  <span class="diff-desc">50 מדינות ברמת קושי בינונית</span>
+                </button>
+                <button class="diff-btn" data-level="3">
+                  <span class="diff-title">רמה 3 - מתקדמת</span>
+                  <span class="diff-desc">50 מדינות פחות מוכרות ומאתגרות</span>
+                </button>
+                <button class="diff-btn" data-level="all">
+                  <span class="diff-title">כל הרמות</span>
+                  <span class="diff-desc">שילוב אקראי של כל 150 המדינות</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+              <button id="btn-start-trivia" class="btn btn-primary btn-lg">
+                <span class="btn-icon">🎮</span> להתחיל משחק טריוויה
+              </button>
+              <button id="btn-start-study" class="btn btn-secondary btn-lg">
+                <span class="btn-icon">📚</span> מעבר למרכז לימוד
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Stats Panel -->
+          <div class="panel glass-panel stats-panel">
+            <h3>ההישגים שלי</h3>
+            <div class="stats-overview">
+              <div class="stat-card">
+                <span class="stat-num" id="stats-games-played">0</span>
+                <span class="stat-name">משחקים שוחקו</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-num" id="stats-correct-pct">0%</span>
+                <span class="stat-name">תשובות נכונות</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-num" id="stats-countries-discovered">0/150</span>
+                <span class="stat-name">מדינות שנלמדו</span>
+              </div>
+            </div>
+
+            <div class="ranking-preview-box">
+              <h4>עובדה מעניינת:</h4>
+              <p id="fun-fact-text" class="fun-fact-text">טוען עובדה מעניינת...</p>
+              <button id="btn-next-fact" class="btn btn-text">עובדה נוספת 🎲</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 2: TRIVIA GAME SCREEN -->
+      <section id="trivia-view" class="view-section">
+        <div class="trivia-header glass-panel">
+          <div class="trivia-meta">
+            <span class="badge" id="trivia-level-badge">רמה 1</span>
+            <span class="question-progress" id="trivia-progress-text">שאלה 1 מתוך 10</span>
+          </div>
+          
+          <div class="trivia-score">
+            <span>ניקוד:</span>
+            <span class="score-num" id="trivia-current-score">0</span>
+          </div>
+
+          <!-- Timer Bar -->
+          <div class="timer-container">
+            <div class="timer-bar" id="trivia-timer-bar"></div>
+          </div>
+        </div>
+
+        <!-- Question Card -->
+        <div class="question-container glass-panel" id="question-card">
+          <!-- Question Text -->
+          <h3 class="question-text" id="question-text">מתי עיר הבירה של...?</h3>
+
+          <!-- Flag Graphic / Extra Info container -->
+          <div class="question-graphic-container" id="question-graphic-container">
+            <img src="" alt="דגל המדינה" id="question-flag-img" class="question-flag-img hidden">
+          </div>
+
+          <!-- Multiple Choice Options -->
+          <div class="options-grid" id="options-grid">
+            <button class="option-btn">אפשרות 1</button>
+            <button class="option-btn">אפשרות 2</button>
+            <button class="option-btn">אפשרות 3</button>
+            <button class="option-btn">אפשרות 4</button>
+          </div>
+        </div>
+
+        <div class="trivia-footer">
+          <button id="btn-abort-trivia" class="btn btn-danger">
+            ↩ ביטול וחזרה למסך הבית
+          </button>
+        </div>
+      </section>
+
+      <!-- VIEW 3: TRIVIA RESULTS SCREEN -->
+      <section id="results-view" class="view-section">
+        <div class="results-container glass-panel">
+          <div class="trophy-wrapper">
+            <span class="trophy-emoji" id="results-emoji">🏆</span>
+          </div>
+          <h2 id="results-title">כל הכבוד!</h2>
+          <p id="results-subtitle">סיימת את הסבב בהצלחה</p>
+
+          <div class="results-score-box">
+            <div class="score-item">
+              <span class="score-label">ציון סופי</span>
+              <span class="score-value" id="results-score-pct">90%</span>
+            </div>
+            <div class="score-item">
+              <span class="score-label">תשובות נכונות</span>
+              <span class="score-value" id="results-score-fraction">9/10</span>
+            </div>
+          </div>
+
+          <!-- Questions Review Breakdown -->
+          <h3>פירוט השאלות:</h3>
+          <div class="breakdown-list" id="results-breakdown-list">
+            <!-- Dynamic elements: list of correct/incorrect questions -->
+          </div>
+
+          <div class="results-actions">
+            <button id="btn-replay-trivia" class="btn btn-primary">שחק שוב 🔁</button>
+            <button id="btn-results-home" class="btn btn-secondary">חזרה למסך הבית 🏠</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 4: STUDY CENTER VIEW -->
+      <section id="study-view" class="view-section">
+        <!-- Study Control Bar -->
+        <div class="study-controls glass-panel">
+          <div class="study-nav">
+            <button id="btn-study-home" class="btn btn-secondary">🏠 מסך הבית</button>
+            <div class="toggle-mode-group">
+              <button class="toggle-btn active" id="btn-mode-cards" data-mode="cards">🃏 כרטיסיות לימוד</button>
+              <button class="toggle-btn" id="btn-mode-rankings" data-mode="rankings">📊 טבלאות מובילים</button>
+            </div>
+          </div>
+
+          <!-- Filters Section -->
+          <div class="filters-row" id="study-filters-row">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="study-search" placeholder="חיפוש מדינה, עיר בירה, שפה...">
+            </div>
+
+            <div class="filter-select-group">
+              <div class="select-wrapper">
+                <select id="study-filter-level">
+                  <option value="all">כל הרמות (150 מדינות)</option>
+                  <option value="1">רמה 1 (50 מדינות)</option>
+                  <option value="2">רמה 2 (50 מדינות)</option>
+                  <option value="3">רמה 3 (50 מדינות)</option>
+                </select>
+              </div>
+
+              <div class="select-wrapper">
+                <select id="study-sort">
+                  <option value="name-asc">שם המדינה (א-ת)</option>
+                  <option value="name-desc">שם המדינה (ת-א)</option>
+                  <option value="area-desc">שטח (מהגדול לקטן)</option>
+                  <option value="area-asc">שטח (מהקטן לגדול)</option>
+                  <option value="pop-desc">אוכלוסייה (מהרבה למועט)</option>
+                  <option value="pop-asc">אוכלוסייה (מהמועט להרבה)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode A: Card Grid View -->
+        <div id="study-cards-container" class="study-content-view active">
+          <div class="study-grid" id="study-grid">
+            <!-- Dynamic country cards generated by Javascript -->
+          </div>
+          <div id="study-no-results" class="no-results hidden">
+            <span>😕 לא נמצאו מדינות התואמות לחיפוש שלך.</span>
+          </div>
+        </div>
+
+        <!-- Mode B: Rankings / Charts View -->
+        <div id="study-rankings-container" class="study-content-view">
+          <div class="rankings-grid">
+            <!-- Column 1: Top Area -->
+            <div class="panel glass-panel ranking-panel">
+              <h3>🌍 המדינות הגדולות ביותר בשטח (קמ"ר)</h3>
+              <div class="ranking-list" id="rank-area-list">
+                <!-- Dynamically populated progress-bar items -->
+              </div>
+            </div>
+
+            <!-- Column 2: Top Population -->
+            <div class="panel glass-panel ranking-panel">
+              <h3>👥 המדינות המאוכלסות ביותר</h3>
+              <div class="ranking-list" id="rank-pop-list">
+                <!-- Dynamically populated progress-bar items -->
+              </div>
+            </div>
+          </div>
+
+          <div class="rankings-full-table-box glass-panel">
+            <h3>📈 השוואה גיאוגרפית מלאה</h3>
+            <div class="table-scroll">
+              <table class="rankings-table" id="rankings-comparison-table">
+                <thead>
+                  <tr>
+                    <th>דירוג</th>
+                    <th>דגל</th>
+                    <th>מדינה</th>
+                    <th>רמה</th>
+                    <th>עיר בירה</th>
+                    <th>אוכלוסייה</th>
+                    <th>שטח (קמ"ר)</th>
+                    <th>מטבע</th>
+                    <th>שפה</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Dynamic table rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>© 2026 אלופי הגיאוגרפיה. פותח עבור yetsion77. מבוסס על נתוני מדינות העולם.</p>
+    </footer>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/countries.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
