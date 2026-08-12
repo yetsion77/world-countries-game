@@ -137,7 +137,7 @@ function setupEventListeners() {
 
   document.getElementById("btn-replay-trivia").addEventListener("click", () => {
     if (gameState.gameMode === "map") {
-      startMapGame();
+      startMapGame(gameState.currentMap);
     } else {
       startTriviaGame();
     }
@@ -147,9 +147,14 @@ function setupEventListeners() {
     switchView("dashboard-view");
   });
 
-  // Start Map Game Button
-  document.getElementById("btn-start-map").addEventListener("click", () => {
-    startMapGame();
+  // Start Map Game Button - Europe
+  document.getElementById("btn-start-map-europe").addEventListener("click", () => {
+    startMapGame("europe");
+  });
+
+  // Start Map Game Button - Americas
+  document.getElementById("btn-start-map-americas").addEventListener("click", () => {
+    startMapGame("americas");
   });
 
   // Abort Map Game Button
@@ -1020,29 +1025,49 @@ function formatPopulation(num) {
 }
 
 // =========================================================================
-// INTERACTIVE MAP GAME ENGINE (EUROPE)
+// INTERACTIVE MAP GAME ENGINE (EUROPE & AMERICAS)
 // =========================================================================
 
-function startMapGame() {
+const AMERICAS_CODES = [
+  'us', 'ca', 'mx', 'gt', 'bz', 'sv', 'hn', 'ni', 'cr', 'pa', 
+  'cu', 'ht', 'do', 'jm', 'bs', 'co', 've', 'gy', 'sr', 'ec', 
+  'pe', 'br', 'bo', 'py', 'uy', 'ar', 'cl'
+];
+
+function startMapGame(mapType) {
   gameState.gameMode = "map";
+  gameState.currentMap = mapType; // "europe" or "americas"
   gameState.score = 0;
   gameState.currentQuestionIndex = 0;
   gameState.roundHistory = [];
 
-  // Filter countries database to find those in EUROPE.states
-  const europeanCountryCodes = EUROPE.states.map(state => state.code.replace("XE-", "").toLowerCase());
-  const europeanCountries = COUNTRIES_DATA.filter(country => 
-    europeanCountryCodes.includes(country.code.toLowerCase())
-  );
+  let targetCountries = [];
 
-  if (europeanCountries.length === 0) {
-    alert("שגיאה: לא נמצאו מדינות אירופאיות בבסיס הנתונים!");
+  if (mapType === "europe") {
+    document.getElementById("map-badge-text").textContent = "מפת אירופה";
+    
+    // Filter countries database to find those in EUROPE.states
+    const europeanCountryCodes = EUROPE.states.map(state => state.code.replace("XE-", "").toLowerCase());
+    targetCountries = COUNTRIES_DATA.filter(country => 
+      europeanCountryCodes.includes(country.code.toLowerCase())
+    );
+  } else {
+    document.getElementById("map-badge-text").textContent = "מפת אמריקה";
+    
+    // Filter countries database to find those in AMERICAS_CODES
+    targetCountries = COUNTRIES_DATA.filter(country => 
+      AMERICAS_CODES.includes(country.code.toLowerCase())
+    );
+  }
+
+  if (targetCountries.length === 0) {
+    alert("שגיאה: לא נמצאו מדינות מתאימות בבסיס הנתונים!");
     return;
   }
 
-  // Shuffle all European countries
-  shuffleArray(europeanCountries);
-  gameState.allQuestions = europeanCountries.map(c => ({
+  // Shuffle and set questions
+  shuffleArray(targetCountries);
+  gameState.allQuestions = targetCountries.map(c => ({
     text: `איפה נמצאת ${c.name}?`,
     target: c
   }));
@@ -1051,7 +1076,7 @@ function startMapGame() {
   switchView("map-view");
   
   // Render map
-  renderEuropeMap();
+  renderMap();
   
   // Reset zoom
   resetMapZoom();
@@ -1060,13 +1085,38 @@ function startMapGame() {
   showMapQuestion();
 }
 
-function renderEuropeMap() {
+function renderMap() {
   const container = document.getElementById("map-svg-container");
   container.innerHTML = ""; // Clear existing
 
+  let viewBox = "";
+  let mapData = [];
+
+  if (gameState.currentMap === "europe") {
+    viewBox = EUROPE.viewBox;
+    mapData = EUROPE.states.map(state => ({
+      code: state.code.replace("XE-", "").toLowerCase(),
+      name: state.name,
+      path: state.path
+    }));
+  } else {
+    // Custom cropped bounding box for the Americas in World map coordinate space
+    viewBox = "-38.5 -37.6 954.8 913.6";
+    mapData = World.countries
+      .filter(c => AMERICAS_CODES.includes(c.code.toLowerCase()))
+      .map(c => {
+        const d = c.path ? c.path : (c.paths ? c.paths.map(p => p.d).join(" ") : "");
+        return {
+          code: c.code.toLowerCase(),
+          name: c.name,
+          path: d
+        };
+      });
+  }
+
   // Create SVG element
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", EUROPE.viewBox);
+  svg.setAttribute("viewBox", viewBox);
   svg.setAttribute("width", "100%");
   svg.setAttribute("height", "100%");
   svg.style.transition = "transform 0.1s ease-out";
@@ -1078,24 +1128,23 @@ function renderEuropeMap() {
   svgGroup.style.transformOrigin = "center center";
 
   // Append paths
-  EUROPE.states.forEach(state => {
+  mapData.forEach(country => {
+    if (!country.path) return; // skip if no path data
+
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", state.path);
-    
-    const isoCode = state.code.replace("XE-", "").toLowerCase();
-    path.setAttribute("id", `map-country-${isoCode}`);
+    path.setAttribute("d", country.path);
+    path.setAttribute("id", `map-country-${country.code}`);
     path.setAttribute("class", "map-country-path");
     
     // Add simple SVG title/tooltip
     const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-    title.textContent = state.name;
+    title.textContent = country.name;
     path.appendChild(title);
 
     // Event listener
     path.addEventListener("click", (e) => {
-      // Prevent click while dragging is happening
       if (mapZoom.isDragging) return;
-      handleMapCountryClick(isoCode, path);
+      handleMapCountryClick(country.code, path);
     });
 
     svgGroup.appendChild(path);
@@ -1129,10 +1178,20 @@ function handleMapCountryClick(clickedCode, pathElement) {
   const targetCountry = question.target;
   const isCorrect = clickedCode.toLowerCase() === targetCountry.code.toLowerCase();
   
-  // Get clicked country name if available in our database, otherwise use the SVG state name
+  // Look up clicked country name
   const clickedCountryData = COUNTRIES_DATA.find(c => c.code.toLowerCase() === clickedCode.toLowerCase());
-  const svgState = EUROPE.states.find(s => s.code.replace("XE-", "").toLowerCase() === clickedCode.toLowerCase());
-  const clickedCountryName = clickedCountryData ? clickedCountryData.name : (svgState ? svgState.name : "מדינה לא ידועה");
+  let clickedCountryName = "מדינה לא ידועה";
+  if (clickedCountryData) {
+    clickedCountryName = clickedCountryData.name;
+  } else {
+    if (gameState.currentMap === "europe") {
+      const svgState = EUROPE.states.find(s => s.code.replace("XE-", "").toLowerCase() === clickedCode.toLowerCase());
+      if (svgState) clickedCountryName = svgState.name;
+    } else {
+      const svgState = World.countries.find(c => c.code.toLowerCase() === clickedCode.toLowerCase());
+      if (svgState) clickedCountryName = svgState.name;
+    }
+  }
 
   if (isCorrect) {
     gameState.score++;
