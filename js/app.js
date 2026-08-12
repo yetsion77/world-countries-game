@@ -683,7 +683,7 @@ function showResults() {
   
   userStats.gamesPlayed++;
   
-  const totalQ = gameState.allQuestions.length;
+  const totalQ = gameState.gameMode === "map" ? gameState.roundHistory.length : gameState.allQuestions.length;
   const finalScorePct = Math.round((gameState.score / totalQ) * 100);
   
   // Beat high score?
@@ -1055,7 +1055,30 @@ const ASIA_CODES = [
   'id', 'ph', 'sg', 'pk', 'bd', 'lk', 'np', 'my', 'ir', 'iq', 
   'jo', 'lb', 'om', 'qa', 'kw', 'bh', 'kz', 'uz', 'az', 'ge', 
   'am', 'mn', 'mm', 'kh', 'la', 'bn', 'kg', 'tj', 'tm', 'bt', 
-  'mv', 'ye', 'sy'
+  'mv', 'ye', 'sy', 'af'
+];
+
+// Complete list of all country codes to render on the SVG map (to prevent blank holes)
+const ALL_AMERICAS_CODES = [
+  'us', 'ca', 'gl', 'mx', 'gt', 'bz', 'sv', 'hn', 'ni', 'cr', 'pa', 
+  'cu', 'ht', 'do', 'jm', 'pr', 'bs', 'tt', 'co', 've', 'gy', 'sr', 
+  'gf', 'ec', 'pe', 'br', 'bo', 'py', 'uy', 'ar', 'cl', 'fk'
+];
+
+const ALL_AFRICA_CODES = [
+  'dz', 'ao', 'bj', 'bw', 'bf', 'bi', 'cm', 'cv', 'cf', 'td', 'km', 
+  'cg', 'cd', 'dj', 'eg', 'gq', 'er', 'sz', 'et', 'ga', 'gm', 'gh', 
+  'gn', 'gw', 'ci', 'ke', 'ls', 'lr', 'ly', 'mg', 'mw', 'ml', 'mr', 
+  'mu', 'ma', 'mz', 'na', 'ne', 'ng', 'rw', 'sn', 'sc', 'sl', 'so', 
+  'za', 'ss', 'sd', 'tz', 'tg', 'tn', 'ug', 'zm', 'zw', 'eh'
+];
+
+const ALL_ASIA_CODES = [
+  'af', 'am', 'az', 'bh', 'bd', 'bt', 'bn', 'kh', 'cn', 'cy', 'ge', 
+  'in', 'id', 'ir', 'iq', 'il', 'jp', 'jo', 'kz', 'kp', 'kr', 'kw', 
+  'kg', 'la', 'lb', 'my', 'mv', 'mn', 'mm', 'np', 'om', 'pk', 'ph', 
+  'qa', 'sa', 'sg', 'lk', 'sy', 'tw', 'tj', 'th', 'tl', 'tr', 'tm', 
+  'ae', 'uz', 'vn', 'ye', 'ps', 'ru'
 ];
 
 function startMapGame(mapType) {
@@ -1064,6 +1087,7 @@ function startMapGame(mapType) {
   gameState.score = 0;
   gameState.currentQuestionIndex = 0;
   gameState.roundHistory = [];
+  gameState.revealedCountries = new Set(); // Track all countries colored (correct, incorrect, or highlighted)
 
   let targetCountries = [];
 
@@ -1133,13 +1157,13 @@ function renderMap() {
     let activeCodes = [];
     if (gameState.currentMap === "americas") {
       viewBox = "-38.5 -37.6 954.8 913.6";
-      activeCodes = AMERICAS_CODES;
+      activeCodes = ALL_AMERICAS_CODES;
     } else if (gameState.currentMap === "africa") {
       viewBox = "-42.6 -45.5 1330.5 739";
-      activeCodes = AFRICA_CODES;
+      activeCodes = ALL_AFRICA_CODES;
     } else { // "asia"
       viewBox = "-36.8 -43.4 1842.3 631.7";
-      activeCodes = ASIA_CODES;
+      activeCodes = ALL_ASIA_CODES;
     }
 
     mapData = World.countries
@@ -1203,7 +1227,8 @@ function showMapQuestion() {
   const question = gameState.allQuestions[gameState.currentQuestionIndex];
   
   // Set progress header
-  document.getElementById("map-progress-text").textContent = `מדינה ${gameState.currentQuestionIndex + 1} מתוך ${gameState.allQuestions.length}`;
+  const answeredCount = gameState.roundHistory.length;
+  document.getElementById("map-progress-text").textContent = `מדינה ${answeredCount + 1}`;
   document.getElementById("map-current-score").textContent = gameState.score;
   
   // Set question text
@@ -1212,10 +1237,14 @@ function showMapQuestion() {
 
 function handleMapCountryClick(clickedCode, pathElement) {
   if (gameState.isAnswered) return;
-  gameState.isAnswered = true;
   
   const question = gameState.allQuestions[gameState.currentQuestionIndex];
   const targetCountry = question.target;
+  
+  // If clicked country is already revealed, ignore click (force them to click unrevealed area)
+  if (gameState.revealedCountries.has(clickedCode.toLowerCase())) return;
+  
+  gameState.isAnswered = true;
   const isCorrect = clickedCode.toLowerCase() === targetCountry.code.toLowerCase();
   
   // Look up clicked country name
@@ -1233,6 +1262,9 @@ function handleMapCountryClick(clickedCode, pathElement) {
     }
   }
 
+  // Add target country code to revealed set
+  gameState.revealedCountries.add(targetCountry.code.toLowerCase());
+
   if (isCorrect) {
     gameState.score++;
     pathElement.classList.add("correct");
@@ -1240,6 +1272,9 @@ function handleMapCountryClick(clickedCode, pathElement) {
   } else {
     pathElement.classList.add("incorrect");
     addMapFlag(pathElement, clickedCode);
+    
+    // Also add clicked country code to revealed set so it's not asked later!
+    gameState.revealedCountries.add(clickedCode.toLowerCase());
     
     // Highlight correct country in gold
     const correctPath = document.getElementById(`map-country-${targetCountry.code.toLowerCase()}`);
@@ -1268,6 +1303,15 @@ function handleMapCountryClick(clickedCode, pathElement) {
 
 function nextMapQuestion() {
   gameState.currentQuestionIndex++;
+  
+  // Find the next country in target list that hasn't been revealed/colored yet
+  while (gameState.currentQuestionIndex < gameState.allQuestions.length) {
+    const nextTarget = gameState.allQuestions[gameState.currentQuestionIndex].target;
+    if (!gameState.revealedCountries.has(nextTarget.code.toLowerCase())) {
+      break;
+    }
+    gameState.currentQuestionIndex++;
+  }
   
   if (gameState.currentQuestionIndex < gameState.allQuestions.length) {
     showMapQuestion();

@@ -146,7 +146,7 @@ const COUNTRIES_DATA = [
   { code: "mh", name: "איי מרשל", capital: "מג'ורו", population: 42000, area: 181, currency: "דולר אמריקאי", language: "מרשלית ואנגלית", lat: 7.13, lng: 171.18, level: 3 },
   { code: "pw", name: "פלאו", capital: "נגרולמוד", population: 18000, area: 459, currency: "דולר אמריקאי", language: "פלאואנית ואנגלית", lat: 7.51, lng: 134.58, level: 3 },
   { code: "fm", name: "מיקרונזיה", capital: "פליקיר", population: 115000, area: 702, currency: "דולר אמריקאי", language: "אנגלית", lat: 6.92, lng: 158.15, level: 3 },
-  { code: "tv", name: "טובאלו", capital: "פנאפוטי", population: 11000, area: 26, currency: "דולר אוסטרלי", language: "טובאלואנית ואנגלית", lat: -7.48, lng: 179.14, level: 3 },
+  { code: "af", name: "אפגניסטן", capital: "קאבול", population: 41000000, area: 652230, currency: "אפגני", language: "דארי ופאשטו", lat: 33.939, lng: 67.71, level: 3 },
   { code: "ht", name: "האיטי", capital: "פורט-או-פרנס", population: 11500000, area: 27750, currency: "גורד האיטי", language: "צרפתית וקריאולית", lat: 19.0, lng: -72.25, level: 3 },
   { code: "ki", name: "קיריבטי", capital: "דרום טאראווה", population: 130000, area: 811, currency: "דולר אוסטרלי", language: "קיריבטית ואנגלית", lat: -3.37, lng: -168.73, level: 3 },
   { code: "sb", name: "איי שלמה", capital: "הוניארה", population: 750000, area: 28896, currency: "דולר איי שלמה", language: "אנגלית", lat: -9.64, lng: 160.15, level: 3 },
