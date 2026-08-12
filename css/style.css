@@ -1304,10 +1304,20 @@ h1, h2, h3, h4 {
 
 /* סגנון דגלים קטנים על גבי המפה */
 .map-country-flag {
-  pointer-events: none; /* כדי שלא יפריע ללחיצות */
+  pointer-events: auto; /* מאפשר אינטראקציה של ריחוף (Hover) */
   opacity: 0;
   animation: fadeIn 0.4s forwards;
   filter: drop-shadow(0px 1px 3px rgba(0, 0, 0, 0.7));
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease;
+  transform-origin: center;
+  transform-box: fill-box; /* מבטיח שציר הסיבוב/גדילה יהיה מרכז התמונה בתוך ה-SVG */
+  cursor: pointer;
+}
+
+.map-country-flag:hover {
+  transform: scale(2.2);
+  filter: drop-shadow(0px 3px 8px rgba(0, 0, 0, 0.9));
+  z-index: 1000;
 }
 
 

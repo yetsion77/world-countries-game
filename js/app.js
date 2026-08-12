@@ -1407,8 +1407,14 @@ function addMapFlag(pathElement, countryCode) {
   if (existingFlag) return;
 
   const bbox = pathElement.getBBox();
-  const flagWidth = 24;
-  const flagHeight = 16;
+  
+  // Calculate flag size dynamically: scale down for small countries so they don't hide the country path
+  let flagWidth = 24;
+  if (bbox.width < 25 || bbox.height < 20) {
+    const size = Math.min(bbox.width, bbox.height);
+    flagWidth = Math.max(8, Math.min(24, size * 1.5));
+  }
+  const flagHeight = flagWidth * (2/3);
   
   const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
   image.setAttribute("href", `https://flagcdn.com/w80/${countryCode.toLowerCase()}.png`);
@@ -1418,7 +1424,7 @@ function addMapFlag(pathElement, countryCode) {
   image.setAttribute("height", flagHeight);
   image.setAttribute("class", "map-country-flag");
   image.setAttribute("data-country-id", pathElement.id);
-  image.setAttribute("pointer-events", "none");
+  image.setAttribute("pointer-events", "auto");
   
   pathElement.parentNode.appendChild(image);
 }
